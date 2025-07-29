@@ -1,7 +1,8 @@
-ipywidgets==8.1.5
-matplotlib==3.10.3
-numpy==2.3.1
-pandas==2.3.0
-scikit_learn==1.7.0
-simpy==4.1.1
-streamlit==1.12.0
+streamlit==1.30.0          # Newer UI, faster load times
+ipywidgets==8.1.1          # Works cleanly with Jupyter + Streamlit
+matplotlib==3.9.0          # Compatible with latest numpy
+numpy==1.26.4              # Widely supported + optimized
+pandas==2.2.2              # Stable with Streamlit & matplotlib
+scikit-learn==1.4.2        # Correct name + latest stable release
+simpy==4.1.1               # Your current version is solid
+
