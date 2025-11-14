@@ -37,7 +37,6 @@ with st.sidebar:
 
 st.info("Adjust parameters to see simulation results update automatically.")
 
-# Run the simulation inside try/except and display any error nicely in Streamlit
 try:
     results = run_simulation(
         battery_capacity=battery_capacity,
@@ -45,7 +44,6 @@ try:
         motor_power=motor_power,
         motor_efficiency=motor_efficiency,
         panel_area=panel_area,
-        # multiply panel efficiency with user multiplier for easy experimentation
         panel_efficiency=panel_efficiency * solar_power_output_factor,
         trickle_charge=trickle_charge,
         solar_hours=solar_hours,
@@ -80,12 +78,9 @@ try:
     if "cost_plot" in results:
         st.pyplot(results['cost_plot'], clear_figure=True)
 
-    # Some simulation versions label the weather plot differently; handle both keys
     st.subheader("Solar Power Output / Weather Impact")
     if "weather_impact_plot" in results:
         st.pyplot(results['weather_impact_plot'], clear_figure=True)
-    elif "fig_weather" in results:
-        st.pyplot(results['fig_weather'], clear_figure=True)
     elif "fig_weather" in results:
         st.pyplot(results['fig_weather'], clear_figure=True)
     else:
@@ -97,7 +92,6 @@ try:
     elif "fig_carbon" in results:
         st.pyplot(results['fig_carbon'], clear_figure=True)
 
-    # Tables / Dataframes (defensive checks for keys)
     st.subheader("Energy Efficiency Table (Wh/km)")
     if 'df_efficiency' in results:
         st.dataframe(results['df_efficiency'])
@@ -114,19 +108,19 @@ try:
     if 'df_cost' in results:
         st.dataframe(results['df_cost'])
 
-    # Metrics
+    # ----- FIXED METRICS -----
     if 'total_solar_power_generated_Wh' in results:
         st.subheader("Total Solar Power Generated (Wh)")
-        st.metric(label="", value=f"{results['total_solar_power_generated_Wh']:.2f}")
+        st.metric(label="Total Solar Power", value=f"{results['total_solar_power_generated_Wh']:.2f}")
 
     if 'carbon_emissions_kg_grid' in results:
         st.subheader("Carbon Emissions from Grid (kg CO2)")
-        st.metric(label="", value=f"{results['carbon_emissions_kg_grid']:.2f}")
+        st.metric(label="Grid Emissions", value=f"{results['carbon_emissions_kg_grid']:.2f}")
 
     if 'carbon_emissions_kg_solar' in results:
         st.subheader("Carbon Emissions from Solar (kg CO2)")
-        st.metric(label="", value=f"{results['carbon_emissions_kg_solar']:.2f}")
+        st.metric(label="Solar Emissions", value=f"{results['carbon_emissions_kg_solar']:.2f}")
 
-except Exception as e:
+except Exception:
     st.error("Simulation failed — see details below.")
     st.text(traceback.format_exc())
