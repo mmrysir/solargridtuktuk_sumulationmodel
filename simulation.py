@@ -241,25 +241,71 @@ def run_simulation(
 
     total_charge = 0
     hourly_irradiance = []
-    for hour in range(solar_hours):
-        sunlight_intensity = solar_tuktuk.weather.get_sunlight(hour + 6)
+    hourly_power_output = []
+    
+    # Display full day from 6am to 6pm (18:00)
+    full_day_hours = range(6, 19)  # 6am to 6pm
+    
+    for hour in full_day_hours:
+        sunlight_intensity = solar_tuktuk.weather.get_sunlight(hour)
         hourly_irradiance.append(sunlight_intensity)
-        for minute in range(60):
-            solar_input = solar_tuktuk.solar_panel.generate_power(sunlight_intensity) / 60
-            solar_tuktuk.battery.charge(solar_input)
-            total_charge += solar_input
+        
+        # Calculate actual power output from solar panel
+        power_output = solar_tuktuk.solar_panel.generate_power(sunlight_intensity)
+        hourly_power_output.append(power_output)
+        
+        # Only charge during solar_hours for actual simulation
+        if hour < 6 + solar_hours:
+            for minute in range(60):
+                solar_input = power_output / 60
+                solar_tuktuk.battery.charge(solar_input)
+                total_charge += solar_input
 
     weather_multiplier = WEATHER_EFFECTS.get(weather_type, 1.0)
     total_solar_power_generated = total_charge * weather_multiplier
 
-    fig_weather, ax_weather = plt.subplots(figsize=(12, 6))
-    hours_arr = np.arange(6, 6 + solar_hours)
-    ax_weather.plot(hours_arr, hourly_irradiance, 'o-', label="Sunlight Intensity (W/m²)")
-    ax_weather.set_xlabel("Hour of Day")
-    ax_weather.set_ylabel("Sunlight Intensity (W/m²)")
-    ax_weather.set_title(f"Solar Power Output / Weather Impact ({weather_type})")
-    ax_weather.grid(True, linestyle="--", alpha=0.6)
-    ax_weather.legend()
+    # Enhanced weather impact plot
+    fig_weather, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+    hours_arr = np.array(list(full_day_hours))
+    
+    # Plot 1: Sunlight Intensity
+    ax1.plot(hours_arr, hourly_irradiance, 'o-', linewidth=2, markersize=8, 
+             color='#FDB462', label="Sunlight Intensity")
+    ax1.fill_between(hours_arr, hourly_irradiance, alpha=0.3, color='#FDB462')
+    ax1.set_xlabel("Hour of Day", fontsize=11)
+    ax1.set_ylabel("Sunlight Intensity (W/m²)", fontsize=11)
+    ax1.set_title(f"Sunlight Intensity Throughout the Day\nWeather: {weather_type}", 
+                  fontsize=13, fontweight='bold')
+    ax1.grid(True, linestyle="--", alpha=0.6)
+    ax1.set_xticks(hours_arr)
+    ax1.set_xticklabels([f"{h}:00" for h in hours_arr], rotation=45)
+    ax1.legend(fontsize=10)
+    
+    # Highlight rainy hours if any
+    rainy_hours = solar_tuktuk.weather.rainy_hours
+    for rh in rainy_hours:
+        if rh in full_day_hours:
+            ax1.axvspan(rh - 0.3, rh + 0.3, alpha=0.2, color='blue', label='Rainy' if rh == min(rainy_hours) else '')
+    
+    # Plot 2: Power Output
+    ax2.plot(hours_arr, hourly_power_output, 's-', linewidth=2, markersize=8,
+             color='#1f77b4', label="Solar Power Output")
+    ax2.fill_between(hours_arr, hourly_power_output, alpha=0.3, color='#1f77b4')
+    ax2.set_xlabel("Hour of Day", fontsize=11)
+    ax2.set_ylabel("Power Output (W)", fontsize=11)
+    ax2.set_title(f"Solar Panel Power Output (Panel Area: {panel_area}m², Efficiency: {panel_efficiency*100}%)",
+                  fontsize=13, fontweight='bold')
+    ax2.grid(True, linestyle="--", alpha=0.6)
+    ax2.set_xticks(hours_arr)
+    ax2.set_xticklabels([f"{h}:00" for h in hours_arr], rotation=45)
+    ax2.legend(fontsize=10)
+    
+    # Add weather multiplier info
+    fig_weather.text(0.99, 0.01, f"Weather Multiplier: {weather_multiplier:.2f}x | "
+                                  f"Total Energy Generated: {total_solar_power_generated:.2f} Wh",
+                     ha='right', va='bottom', fontsize=10, style='italic')
+    
+    plt.tight_layout()
 
     grid_tuktuk = GridTukTuk(
         battery_capacity=battery_capacity,
