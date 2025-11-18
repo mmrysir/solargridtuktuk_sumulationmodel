@@ -593,6 +593,182 @@ def run_simulation(
 
     plt.tight_layout()
 
+    # --- SUPERCAPACITOR VS BATTERY EFFICIENCY PLOT ---
+    fig_cap_vs_bat, (ax_cap1, ax_cap2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    # Left plot: Energy source breakdown for each terrain
+    terrains_arr = df['terrain'].values
+    x_pos = np.arange(len(terrains_arr))
+    
+    # Calculate energy distribution (simplified model)
+    # Supercapacitor provides burst power (20% of energy needs)
+    # Battery provides sustained power (80% of energy needs)
+    solar_total_energy = df['solar_eff_Wh_per_km'].values * distance_per_terrain
+    cap_contribution = solar_total_energy * 0.2  # 20% from supercapacitor
+    battery_contribution = solar_total_energy * 0.8  # 80% from battery
+    
+    width = 0.35
+    ax_cap1.bar(x_pos - width/2, battery_contribution, width, 
+                label='Battery', color='#2E86AB', alpha=0.8)
+    ax_cap1.bar(x_pos - width/2, cap_contribution, width, 
+                bottom=battery_contribution, label='Supercapacitor Boost', 
+                color='#A23B72', alpha=0.8)
+    
+    # Grid tuk-tuk (battery only)
+    grid_total_energy = df['grid_eff_Wh_per_km'].values * distance_per_terrain
+    ax_cap1.bar(x_pos + width/2, grid_total_energy, width, 
+                label='Grid Battery Only', color='#F18F01', alpha=0.8)
+    
+    ax_cap1.set_xlabel('Terrain Type', fontsize=11)
+    ax_cap1.set_ylabel('Energy per Trip (Wh)', fontsize=11)
+    ax_cap1.set_title('Energy Source Distribution\nSolar (Battery+Supercap) vs Grid (Battery Only)', 
+                      fontsize=12, fontweight='bold')
+    ax_cap1.set_xticks(x_pos)
+    ax_cap1.set_xticklabels(terrains_arr, rotation=45)
+    ax_cap1.legend(fontsize=9)
+    ax_cap1.grid(True, linestyle='--', alpha=0.6, axis='y')
+    
+    # Right plot: Efficiency comparison (charge/discharge cycles)
+    cycle_counts = np.array([100, 500, 1000, 2000, 5000, 10000])
+    
+    # Supercapacitor: Very high cycle life, minimal degradation
+    supercap_efficiency = np.array([98, 97.5, 97, 96.5, 96, 95.5])
+    
+    # Battery: Degrades more with cycles
+    battery_efficiency = np.array([95, 92, 88, 82, 75, 68])
+    
+    ax_cap2.plot(cycle_counts, supercap_efficiency, 'o-', linewidth=2.5, 
+                 markersize=8, color='#A23B72', label='Supercapacitor')
+    ax_cap2.plot(cycle_counts, battery_efficiency, 's-', linewidth=2.5, 
+                 markersize=8, color='#2E86AB', label='Battery')
+    
+    ax_cap2.fill_between(cycle_counts, supercap_efficiency, battery_efficiency, 
+                         alpha=0.2, color='#A23B72')
+    
+    ax_cap2.set_xlabel('Charge/Discharge Cycles', fontsize=11)
+    ax_cap2.set_ylabel('Energy Efficiency (%)', fontsize=11)
+    ax_cap2.set_title('Efficiency Over Lifecycle\nSupercapacitor vs Battery', 
+                      fontsize=12, fontweight='bold')
+    ax_cap2.set_xscale('log')
+    ax_cap2.grid(True, linestyle='--', alpha=0.6)
+    ax_cap2.legend(fontsize=10)
+    ax_cap2.set_ylim(60, 100)
+    
+    # Add annotation
+    ax_cap2.annotate('Supercapacitor maintains\n>95% efficiency', 
+                     xy=(10000, 95.5), xytext=(5000, 85),
+                     arrowprops=dict(arrowstyle='->', color='#A23B72', lw=1.5),
+                     fontsize=9, color='#A23B72', fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # --- BATTERY DEGRADATION COMPARISON PLOT ---
+    fig_degradation, (ax_deg1, ax_deg2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    # Left plot: Capacity degradation over years
+    years_degradation = np.arange(0, years + 1)
+    
+    # Solar TukTuk with supercapacitor: Reduced battery stress
+    # Supercapacitor handles high-power demands, reducing battery cycling stress
+    solar_degradation = 100 * np.exp(-0.03 * years_degradation)  # Slower degradation
+    
+    # Grid TukTuk: Higher battery stress (all loads on battery)
+    grid_degradation = 100 * np.exp(-0.06 * years_degradation)  # Faster degradation
+    
+    ax_deg1.plot(years_degradation, solar_degradation, 'o-', linewidth=2.5,
+                 markersize=8, color='#1f77b4', label='Solar TukTuk (with Supercap)')
+    ax_deg1.plot(years_degradation, grid_degradation, 's-', linewidth=2.5,
+                 markersize=8, color='#ff7f0e', label='Grid TukTuk (Battery Only)')
+    
+    ax_deg1.fill_between(years_degradation, solar_degradation, grid_degradation,
+                         alpha=0.2, color='#1f77b4', label='Capacity Advantage')
+    
+    ax_deg1.axhline(y=80, color='red', linestyle='--', linewidth=1.5, 
+                    label='80% Threshold (End of Life)')
+    
+    ax_deg1.set_xlabel('Years of Operation', fontsize=11)
+    ax_deg1.set_ylabel('Battery Capacity (%)', fontsize=11)
+    ax_deg1.set_title('Battery Capacity Degradation Over Time\nSolar (Supercap-assisted) vs Grid', 
+                      fontsize=12, fontweight='bold')
+    ax_deg1.grid(True, linestyle='--', alpha=0.6)
+    ax_deg1.legend(fontsize=9, loc='lower left')
+    ax_deg1.set_ylim(50, 105)
+    
+    # Find when each reaches 80% capacity
+    solar_80_year = -np.log(0.8) / 0.03
+    grid_80_year = -np.log(0.8) / 0.06
+    
+    ax_deg1.annotate(f'Solar: ~{solar_80_year:.1f} years to 80%',
+                     xy=(solar_80_year, 80), xytext=(solar_80_year + 1, 70),
+                     arrowprops=dict(arrowstyle='->', color='#1f77b4', lw=1.5),
+                     fontsize=9, color='#1f77b4', fontweight='bold')
+    
+    ax_deg1.annotate(f'Grid: ~{grid_80_year:.1f} years to 80%',
+                     xy=(grid_80_year, 80), xytext=(grid_80_year - 2, 90),
+                     arrowprops=dict(arrowstyle='->', color='#ff7f0e', lw=1.5),
+                     fontsize=9, color='#ff7f0e', fontweight='bold')
+    
+    # Right plot: Cumulative cost including battery replacement
+    battery_replacement_cost = 2000  # USD per replacement
+    
+    solar_replacement_years = []
+    grid_replacement_years = []
+    
+    # Calculate replacement years (when capacity drops below 80%)
+    for year in years_degradation:
+        if 100 * np.exp(-0.03 * year) < 80 and year > 0:
+            solar_replacement_years.append(year)
+        if 100 * np.exp(-0.06 * year) < 80 and year > 0:
+            grid_replacement_years.append(year)
+    
+    # Only keep first replacement for each
+    solar_replacement_year = min(solar_replacement_years) if solar_replacement_years else None
+    grid_replacement_year = min(grid_replacement_years) if grid_replacement_years else None
+    
+    # Calculate total cost including replacements
+    solar_total_with_replacement = solar_total_cost.copy()
+    grid_total_with_replacement = grid_total_cost.copy()
+    
+    if solar_replacement_year and solar_replacement_year <= years:
+        solar_total_with_replacement[int(solar_replacement_year):] += battery_replacement_cost
+    
+    if grid_replacement_year and grid_replacement_year <= years:
+        grid_total_with_replacement[int(grid_replacement_year):] += battery_replacement_cost
+    
+    ax_deg2.plot(years_arr, solar_total_with_replacement, 'o-', linewidth=2.5,
+                 markersize=6, color='#1f77b4', label='Solar TukTuk')
+    ax_deg2.plot(years_arr, grid_total_with_replacement, 's-', linewidth=2.5,
+                 markersize=6, color='#ff7f0e', label='Grid TukTuk')
+    
+    # Mark replacement points
+    if solar_replacement_year and solar_replacement_year <= years:
+        idx = int(solar_replacement_year)
+        ax_deg2.plot(idx, solar_total_with_replacement[idx], 'X', 
+                    markersize=15, color='red', 
+                    label=f'Battery Replacement (Year {idx})')
+    
+    if grid_replacement_year and grid_replacement_year <= years:
+        idx = int(grid_replacement_year)
+        ax_deg2.plot(idx, grid_total_with_replacement[idx], 'X', 
+                    markersize=15, color='darkred')
+    
+    ax_deg2.set_xlabel('Years of Operation', fontsize=11)
+    ax_deg2.set_ylabel('Total Cost Including Replacements (USD)', fontsize=11)
+    ax_deg2.set_title(f'Total Cost with Battery Replacement\n(Replacement Cost: ${battery_replacement_cost})', 
+                      fontsize=12, fontweight='bold')
+    ax_deg2.grid(True, linestyle='--', alpha=0.6)
+    ax_deg2.legend(fontsize=9)
+    
+    # Add final cost labels
+    ax_deg2.text(years_arr[-1], solar_total_with_replacement[-1], 
+                 f"${solar_total_with_replacement[-1]:,.0f}", 
+                 va='bottom', ha='right', color='#1f77b4', fontweight='bold')
+    ax_deg2.text(years_arr[-1], grid_total_with_replacement[-1], 
+                 f"${grid_total_with_replacement[-1]:,.0f}", 
+                 va='top', ha='right', color='#ff7f0e', fontweight='bold')
+    
+    plt.tight_layout()
+
     df_cost = pd.DataFrame({
         "Terrain": df['terrain'],
         "Solar Cost/km (USD)": df['solar_cost_per_km'].round(4),
@@ -611,6 +787,8 @@ def run_simulation(
         'efficiency_plot': fig_eff,
         'range_plot': fig_range,
         'cost_plot': fig_cost,
+        'supercap_vs_battery_plot': fig_cap_vs_bat,
+        'degradation_plot': fig_degradation,
         'df_efficiency': df[['terrain', 'solar_eff_Wh_per_km', 'grid_eff_Wh_per_km']].rename(columns={
             "terrain": "Terrain",
             "solar_eff_Wh_per_km": "SolarTukTuk (Wh/km)",
@@ -634,4 +812,6 @@ if __name__ == "__main__":
     results['efficiency_plot'].show()
     results['range_plot'].show()
     results['cost_plot'].show()
+    results['supercap_vs_battery_plot'].show()
+    results['degradation_plot'].show()
     plt.show()
