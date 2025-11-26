@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import random
 
-
 random.seed(42)
-
 
 class Weather:
     def __init__(self):
@@ -25,7 +22,6 @@ class Weather:
             return self.daily_sunlight_pattern.get(hour, 50) * 0.3
         return self.daily_sunlight_pattern.get(hour, 50)
 
-
 class Battery:
     def __init__(self, capacity):
         self.capacity = capacity
@@ -37,17 +33,22 @@ class Battery:
     def discharge(self, power_output):
         self.charge_level = max(0, self.charge_level - power_output)
 
-
 class SolarPanel:
-    def __init__(self, efficiency, area):
+    def __init__(self, efficiency, area, power_output_multiplier):
         self.base_efficiency = efficiency
         self.area = area
+        self.power_output_multiplier = power_output_multiplier
 
     def generate_power(self, sunlight_intensity):
-        efficiency_factor = 1 - min(0.15, max(0, (sunlight_intensity - 800) / 5000))
-        actual_efficiency = self.base_efficiency * efficiency_factor
-        return actual_efficiency * self.area * sunlight_intensity
-
+        # Solar power output ONLY depends on:
+        # 1. panel_area (self.area)
+        # 2. panel_efficiency (self.base_efficiency)
+        # 3. power_output_multiplier (self.power_output_multiplier)
+        # 4. sunlight_intensity (environmental input from weather/time)
+        
+        # No dynamic efficiency adjustments - panel characteristics are constant
+        base_power = self.base_efficiency * self.area * sunlight_intensity
+        return base_power * self.power_output_multiplier
 
 class Supercapacitor:
     def __init__(self, capacity):
@@ -59,7 +60,6 @@ class Supercapacitor:
         self.charge_level -= boost_available
         return boost_available
 
-
 class Motor:
     def __init__(self, power_rating, efficiency):
         self.power_rating = power_rating
@@ -70,7 +70,6 @@ class Motor:
         base_energy = (self.power_rating * distance * terrain_factor) / 1000 / self.efficiency
         return base_energy * weight_factor
 
-
 class GridTukTuk:
     def __init__(self, battery_capacity, motor, kerb_weight, top_speed):
         self.battery = Battery(battery_capacity)
@@ -79,22 +78,10 @@ class GridTukTuk:
         self.top_speed = top_speed
         self.total_energy_consumed = 0
         self.total_distance_covered = 0
-        self.terrain_energy_usage = {
-            "Flat": 0,
-            "Hill": 0,
-            "Sandy": 0,
-            "Rough": 0,
-            "Downhill": 0
-        }
+        self.terrain_energy_usage = {"Flat": 0, "Hill": 0, "Sandy": 0, "Rough": 0, "Downhill": 0}
 
     def drive(self, distance, terrain, speed=None):
-        terrain_factors = {
-            "Flat": 1.0,
-            "Hill": 1.5,
-            "Sandy": 1.8,
-            "Rough": 2.0,
-            "Downhill": 0.7
-        }
+        terrain_factors = {"Flat": 1.0, "Hill": 1.5, "Sandy": 1.8, "Rough": 2.0, "Downhill": 0.7}
         terrain_factor = terrain_factors.get(terrain, 1.0)
         energy_needed = self.motor.energy_required(distance, terrain_factor, self.kerb_weight)
 
@@ -116,44 +103,22 @@ class GridTukTuk:
         self.battery.charge(recovered_energy)
         print(f"Regenerative braking recovered {recovered_energy:.2f} Wh")
 
-
 class SolarTukTuk:
-    def __init__(
-        self,
-        battery_capacity,
-        capacitor_capacity,
-        motor,
-        kerb_weight,
-        top_speed,
-        panel_area,
-        panel_efficiency
-    ):
+    def __init__(self, battery_capacity, capacitor_capacity, motor, kerb_weight, top_speed, panel_area, panel_efficiency, power_output_multiplier):
         self.battery = Battery(battery_capacity)
         self.supercapacitor = Supercapacitor(capacitor_capacity)
         self.motor = motor
         self.kerb_weight = kerb_weight
         self.top_speed = top_speed
-        self.solar_panel = SolarPanel(panel_efficiency, panel_area)
+        self.solar_panel = SolarPanel(panel_efficiency, panel_area, power_output_multiplier)
         self.weather = Weather()
         self.total_energy_consumed = 0
         self.total_distance_covered = 0
-        self.terrain_energy_usage = {
-            "Flat": 0,
-            "Hill": 0,
-            "Sandy": 0,
-            "Rough": 0,
-            "Downhill": 0
-        }
+        self.terrain_energy_usage = {"Flat": 0, "Hill": 0, "Sandy": 0, "Rough": 0, "Downhill": 0}
         self.hourly_data = []
 
     def drive(self, distance, terrain, speed=None):
-        terrain_factors = {
-            "Flat": 1.0,
-            "Hill": 1.5,
-            "Sandy": 1.8,
-            "Rough": 2.0,
-            "Downhill": 0.7
-        }
+        terrain_factors = {"Flat": 1.0, "Hill": 1.5, "Sandy": 1.8, "Rough": 2.0, "Downhill": 0.7}
         terrain_factor = terrain_factors.get(terrain, 1.0)
         energy_needed = self.motor.energy_required(distance, terrain_factor, self.kerb_weight)
 
@@ -189,24 +154,16 @@ class SolarTukTuk:
         total_charge = 0
         for hour in range(duration_hours):
             sunlight_intensity = self.weather.get_sunlight(hour + 6)
-            for minute in range(60):
+            for _ in range(60):
                 solar_input = self.solar_panel.generate_power(sunlight_intensity) / 60
                 self.battery.charge(solar_input)
                 total_charge += solar_input
             self.hourly_data.append((hour + 6, self.battery.charge_level))
         print(f"Battery trickle charged by {total_charge:.2f} Wh over {duration_hours} hours")
 
-
-WEATHER_EFFECTS = {
-    "Clear": 1.0,
-    "Cloudy": 0.95,
-    "Rainy": 0.85,
-    "Windy": 0.9
-}
-
+WEATHER_EFFECTS = {"Clear": 1.0, "Cloudy": 0.95, "Rainy": 0.85, "Windy": 0.9}
 SOLAR_EMISSION_FACTOR = 0.05
 GRID_EMISSION_FACTOR = 0.4
-
 
 def run_simulation(
     battery_capacity=5000,
@@ -215,6 +172,7 @@ def run_simulation(
     motor_efficiency=0.85,
     panel_area=1.5,
     panel_efficiency=0.2,
+    power_output_multiplier=1.0,
     trickle_charge=True,
     solar_hours=6,
     distance_per_terrain=10,
@@ -228,14 +186,11 @@ def run_simulation(
     years=10,
     weather_type="Clear"
 ):
+
     terrains = ["Flat", "Hill", "Sandy", "Rough", "Downhill"]
     speeds = [30, 25, 20, 15, 40]
 
-    solar_kerb_weight = (
-        base_kerb_weight +
-        (panel_area * panel_weight_per_m2) +
-        (capacitor_capacity * cap_weight_per_Wh)
-    )
+    solar_kerb_weight = base_kerb_weight + (panel_area * panel_weight_per_m2) + (capacitor_capacity * cap_weight_per_Wh)
     grid_kerb_weight = base_kerb_weight
 
     motor = Motor(power_rating=motor_power, efficiency=motor_efficiency)
@@ -247,30 +202,36 @@ def run_simulation(
         kerb_weight=solar_kerb_weight,
         top_speed=80,
         panel_area=panel_area,
-        panel_efficiency=panel_efficiency
+        panel_efficiency=panel_efficiency,
+        power_output_multiplier=power_output_multiplier
     )
 
     total_charge = 0
     hourly_irradiance = []
     hourly_power_output = []
-    
     full_day_hours = range(6, 19)
-    
+
     for hour in full_day_hours:
         sunlight_intensity = solar_tuktuk.weather.get_sunlight(hour)
         hourly_irradiance.append(sunlight_intensity)
-        
+
         power_output = solar_tuktuk.solar_panel.generate_power(sunlight_intensity)
         hourly_power_output.append(power_output)
-        
+
         if hour < 6 + solar_hours:
-            for minute in range(60):
+            for _ in range(60):
                 solar_input = power_output / 60
                 solar_tuktuk.battery.charge(solar_input)
                 total_charge += solar_input
 
     weather_multiplier = WEATHER_EFFECTS.get(weather_type, 1.0)
     total_solar_power_generated = total_charge * weather_multiplier
+
+    # ... (rest of function unchanged)
+
+
+    # Continue with your plotting, driving simulation,
+    # energy and cost calculations, and returning a dictionary of results
 
     fig_weather, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
     hours_arr = np.array(list(full_day_hours))
@@ -434,24 +395,26 @@ def run_simulation(
         return adjusted_range
 
     df['solar_range_km'] = [
-        calc_range(
-            SolarTukTuk(
-                battery_capacity=battery_capacity,
-                capacitor_capacity=capacitor_capacity,
-                motor=motor,
-                kerb_weight=solar_kerb_weight,
-                top_speed=80,
-                panel_area=panel_area,
-                panel_efficiency=panel_efficiency
-            ),
-            terrain,
-            speed,
-            solar_kerb_weight,
-            trickle_charge,
-            solar_hours
-        )
-        for terrain, speed in zip(terrains, speeds)
-    ]
+    calc_range(
+        SolarTukTuk(
+            battery_capacity=battery_capacity,
+            capacitor_capacity=capacitor_capacity,
+            motor=motor,
+            kerb_weight=solar_kerb_weight,
+            top_speed=80,
+            panel_area=panel_area,
+            panel_efficiency=panel_efficiency,
+            power_output_multiplier=power_output_multiplier
+        ),
+        terrain,
+        speed,
+        solar_kerb_weight,
+        trickle_charge,
+        solar_hours
+    )
+    for terrain, speed in zip(terrains, speeds)
+]
+
 
     df['grid_range_km'] = [
         calc_range(

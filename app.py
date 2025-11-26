@@ -179,7 +179,7 @@ try:
         if 'carbon_emissions_kg_grid' in results:
             st.metric(
                 label="Grid Emissions (Annual)",
-                value=f"{results['carbon_emissions_kg_grid']:.2f} kg CO₂"
+                value=f"{abs(results['carbon_emissions_kg_grid']):.2f} kg CO₂"
             )
     
     with metric_col3:
