@@ -29,11 +29,11 @@ with st.sidebar:
     solar_hours = st.slider("Solar Hours", 0, 12, 6, 1)
     distance_per_terrain = st.slider("Distance per Terrain (km)", 1, 50, 10, 1)
     
-    st.subheader("Cost Parameters")
-    grid_cost_per_kwh = st.slider("Grid Cost ($/kWh)", 0.05, 0.50, 0.20, 0.01)
-    initial_investment_solar = st.slider("Solar Initial Investment ($)", 5000, 20000, 9000, 500)
-    initial_investment_electric = st.slider("Electric Initial Investment ($)", 3000, 15000, 6000, 500)
-    annual_km = st.slider("Annual Distance (km)", 5000, 50000, 20000, 1000)
+    st.subheader("Cost Parameters (Kenyan Market)")
+    grid_cost_per_kwh = st.slider("Grid Cost ($/kWh)", 0.05, 2.0, 0.9, 0.05)
+    initial_investment_solar = st.slider("Solar Initial Investment ($)", 2000, 10000, 4000, 100)
+    initial_investment_electric = st.slider("Electric Initial Investment ($)", 2000, 8000, 3000, 100)
+    annual_km = st.slider("Annual Distance (km)", 5000, 30000, 8000, 1000)
     
     st.subheader("Weight & Physical")
     base_kerb_weight = st.slider("Base Kerb Weight (kg)", 300, 700, 400, 10)
