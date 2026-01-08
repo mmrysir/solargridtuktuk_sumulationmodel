@@ -17,6 +17,7 @@ class Weather:
         }
         self.rainy_hours = set(random.sample(list(self.daily_sunlight_pattern.keys()), 3))
 
+
     def get_sunlight(self, hour):
         if hour in self.rainy_hours:
             return self.daily_sunlight_pattern.get(hour, 50) * 0.3
@@ -60,8 +61,19 @@ class Motor:
 
     def energy_required(self, distance, terrain_factor, kerb_weight=400):
         weight_factor = kerb_weight / 400
-        base_energy = (self.power_rating * distance * terrain_factor) / 1000 / self.efficiency
-        return base_energy * weight_factor
+        # Realistic tuk-tuk energy consumption: base ~80 Wh/km for flat terrain
+        # Motor power rating affects efficiency but actual consumption is based on realistic driving
+        # Average speed ~30 km/h, using ~30-35% of max power for cruising
+        average_power_factor = 0.30  # Use 30% of max power for average cruising
+        base_power_watts = self.power_rating * average_power_factor
+        # At average speed of 30 km/h: 1 km = 1/30 hour = 0.0333 hours
+        # Energy = Power * Time / Efficiency
+        base_energy_per_km = (base_power_watts * 0.0333) / self.efficiency
+        # Ensure minimum realistic consumption (tuk-tuk typically 60-150 Wh/km)
+        base_energy_per_km = max(base_energy_per_km, 60)  # Minimum 60 Wh/km
+        # Apply terrain and weight factors
+        energy = base_energy_per_km * distance * terrain_factor * weight_factor
+        return energy
 
 class GridTukTuk:
     def __init__(self, battery_capacity, motor, kerb_weight, top_speed):
@@ -425,7 +437,8 @@ def run_simulation(
     ax_range.set_title(f"Estimated Range by Terrain\nWeather: {weather_type} | Trickle Charging: {'ON' if trickle_charge else 'OFF'}", fontsize=15, fontweight='bold')
 
     y_max = max(df["solar_range_km"].max(), df["grid_range_km"].max())
-    ax_range.set_ylim(0, y_max * 1.15)  # FIXED: Explicitly start at 0
+    # Cap y-axis at 150km for realistic tuk-tuk range display
+    ax_range.set_ylim(0, min(150, y_max * 1.15))  # Realistic tuk-tuk range limit
     ax_range.grid(True, linestyle="--", alpha=0.7, axis='y')
     ax_range.legend(fontsize=12)
     ax_range.tick_params(axis='both', labelsize=12)
