@@ -202,28 +202,27 @@ def run_simulation(
 
     motor = Motor(power_rating=motor_power, efficiency=motor_efficiency)
 
-    # Solar power generation (isolated calculation)
+    # Solar power generation (isolated calculation - ONLY depends on solar panel variables)
     solar_panel = SolarPanel(panel_efficiency, panel_area, power_output_multiplier)
     weather = Weather()
 
-    total_charge = 0
+    # Calculate full day solar power output (independent of operational settings)
     hourly_power_output = []
     full_day_hours = range(6, 19)
+    total_daily_energy = 0
 
     for hour in full_day_hours:
         sunlight_intensity = weather.get_sunlight(hour)
         power_output = solar_panel.generate_power(sunlight_intensity)
         hourly_power_output.append(power_output)
+        # Calculate energy generated this hour (power * 1 hour)
+        total_daily_energy += power_output  # W * 1 hour = Wh
 
-        if hour < 6 + solar_hours:
-            for _ in range(60):
-                solar_input = power_output / 60
-                total_charge += solar_input
-
+    # Apply weather multiplier to total energy (for plot display - only solar panel variables)
     weather_multiplier = WEATHER_EFFECTS.get(weather_type, 1.0)
-    total_solar_power_generated = total_charge * weather_multiplier
+    total_daily_energy_potential = total_daily_energy * weather_multiplier
 
-    # Solar power output plot - FIXED: No negative Y-axis
+    # Solar power output plot - ONLY affected by solar panel variables (panel_area, panel_efficiency, power_output_multiplier, weather_type)
     fig_weather, ax_weather = plt.subplots(figsize=(14, 7))
     hours_arr = np.array(list(full_day_hours))
     
@@ -232,7 +231,7 @@ def run_simulation(
     ax_weather.fill_between(hours_arr, hourly_power_output, alpha=0.4, color='#1f77b4')
     ax_weather.set_xlabel("Hour of Day", fontsize=12, fontweight='bold')
     ax_weather.set_ylabel("Power Output (W)", fontsize=12, fontweight='bold')
-    ax_weather.set_title(f"☀️ Solar Panel Power Output\nPanel Area: {panel_area}m² | Efficiency: {panel_efficiency*100:.1f}% | Output Multiplier: {power_output_multiplier:.2f}x",
+    ax_weather.set_title(f"☀️ Solar Panel Power Output\nPanel Area: {panel_area}m² | Efficiency: {panel_efficiency*100:.1f}% | Output Multiplier: {power_output_multiplier:.2f}x | Weather: {weather_type}",
                   fontsize=14, fontweight='bold')
     ax_weather.grid(True, linestyle="--", alpha=0.6)
     ax_weather.set_xticks(hours_arr)
@@ -240,8 +239,23 @@ def run_simulation(
     ax_weather.set_ylim(bottom=0)  # FIXED: Start Y-axis at 0
     ax_weather.legend(fontsize=11, loc='upper left')
     
-    fig_weather.text(0.99, 0.01, f"Total Energy Generated: {total_solar_power_generated:.2f} Wh",
+    fig_weather.text(0.99, 0.01, f"Total Daily Energy Potential: {total_daily_energy_potential:.2f} Wh (Weather: {weather_type})",
                     ha='right', va='bottom', fontsize=11, style='italic', fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Calculate actual trickle charge for simulation (uses solar_hours - for carbon emissions, etc.)
+    # This is separate from the plot and used for other calculations
+    total_charge = 0
+    for hour in full_day_hours:
+        if hour < 6 + solar_hours:
+            sunlight_intensity = weather.get_sunlight(hour)
+            power_output = solar_panel.generate_power(sunlight_intensity)
+            for _ in range(60):
+                solar_input = power_output / 60
+                total_charge += solar_input
+    
+    total_solar_power_generated = total_charge * weather_multiplier
     
     plt.tight_layout()
 
@@ -420,14 +434,15 @@ def run_simulation(
     ax_cost.set_title(f'Total Cost Projection over {years} Years (Kenyan Market)\nSolar: $4000 initial | Grid: $3000 initial | Battery Replacement: $500-$700', 
                      fontsize=13, fontweight='bold')
     
-    # Set y-axis limit fixed at $8000 for realistic tuk-tuk cost range
-    ax_cost.set_ylim(0, 8000)
+    # Set y-axis limit fixed at $12,000 for realistic but clear tuk-tuk cost range
+    ax_cost.set_ylim(0, 12000)
     ax_cost.legend(fontsize=10, loc='upper left')
     ax_cost.grid(True, linestyle='--', alpha=0.7)
     
     # Add final cost annotations (positioned within plot bounds)
-    solar_final_y = min(solar_total_cost[-1], 7600)  # Keep within 95% of $8000 y-axis
-    grid_final_y = min(grid_total_cost[-1], 7600)
+    # Keep labels within ~95% of the $12,000 y-axis so values like $10,243 are fully visible
+    solar_final_y = min(solar_total_cost[-1], 11400)
+    grid_final_y = min(grid_total_cost[-1], 11400)
     
     ax_cost.text(years_arr[-1], solar_final_y, f"${solar_total_cost[-1]:,.0f}", 
                 va='bottom', ha='right', color='#1f77b4', fontweight='bold', fontsize=11,
@@ -442,7 +457,8 @@ def run_simulation(
         break_even_year = years_arr[break_even_idx[0]]
         ax_cost.axvline(break_even_year, color='green', linestyle=':', linewidth=2, alpha=0.7)
         savings_at_break_even = grid_total_cost[break_even_idx[0]] - solar_total_cost[break_even_idx[0]]
-        break_even_y_pos = min(max(solar_total_cost[-1], grid_total_cost[-1]) * 0.9, 6800)  # Keep within 85% of $8000 y-axis
+        # Place break-even label a bit lower (~70–75% of the $12,000 y-axis) for better visibility
+        break_even_y_pos = min(max(solar_total_cost[-1], grid_total_cost[-1]) * 0.75, 9000)
         ax_cost.text(break_even_year, break_even_y_pos, 
                     f'Break-even:\n{break_even_year:.1f} years\nSavings: ${savings_at_break_even:.0f}', 
                     ha='center', va='bottom', fontsize=10, color='green', fontweight='bold',
@@ -544,8 +560,8 @@ def run_simulation(
     ax_range.set_title(f"Estimated Range by Terrain\nWeather: {weather_type} | Trickle Charging: {'ON' if trickle_charge else 'OFF'}", fontsize=15, fontweight='bold')
 
     y_max = max(df["solar_range_km"].max(), df["grid_range_km"].max())
-    # Cap y-axis at 150km for realistic tuk-tuk range display
-    ax_range.set_ylim(0, min(150, y_max * 1.15))  # Realistic tuk-tuk range limit
+    # Fixed y-axis for range plot: 0–200 km so labels like 154 km fit clearly
+    ax_range.set_ylim(0, 200)
     ax_range.grid(True, linestyle="--", alpha=0.7, axis='y')
     ax_range.legend(fontsize=12)
     ax_range.tick_params(axis='both', labelsize=12)
