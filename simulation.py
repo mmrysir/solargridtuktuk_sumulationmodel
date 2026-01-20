@@ -594,7 +594,7 @@ def run_simulation(
     ax_eff.set_xlabel("Terrain Type", fontsize=14, fontweight='bold')
     ax_eff.set_ylabel("Energy Efficiency (Wh/km)", fontsize=14, fontweight='bold')
     ax_eff.set_title(f"Energy Efficiency Breakdown by Weight\nSolarTukTuk: {total_solar_weight:.1f}kg | Grid TukTuk: {base_weight}kg", fontsize=15, fontweight='bold')
-    ax_eff.set_ylim(bottom=0)  # FIXED: Start Y-axis at 0
+    ax_eff.set_ylim(0, 150)  # Y-axis range: 0-150 Wh/km for all bars to fit
     ax_eff.legend(fontsize=12, loc='upper left')
     ax_eff.grid(True, linestyle='--', alpha=0.7, axis='y')
     ax_eff.tick_params(axis='both', labelsize=12)
