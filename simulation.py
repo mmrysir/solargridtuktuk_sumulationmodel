@@ -470,10 +470,10 @@ def run_simulation(
                     ha='center', va='bottom', fontsize=10, color='green', fontweight='bold',
                     bbox=dict(boxstyle='round,pad=0.5', facecolor='lightgreen', alpha=0.8))
     
-    # Add note about Kenyan market pricing
-    ax_cost.text(0.02, 0.98, 
+    # Add note about Kenyan market pricing (Moved to bottom left to avoid overlap)
+    ax_cost.text(0.02, 0.05, 
                 f'Kenyan Market Pricing:\n• Grid Power: ${grid_cost_per_kwh:.2f}/kWh\n• Battery Replacement: $500-$700\n• Solar: Free energy, low maintenance',
-                transform=ax_cost.transAxes, fontsize=9, verticalalignment='top',
+                transform=ax_cost.transAxes, fontsize=9, verticalalignment='bottom',
                 bbox=dict(boxstyle='round,pad=0.5', facecolor='wheat', alpha=0.8, edgecolor='black'),
                 fontweight='bold')
     
