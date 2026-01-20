@@ -312,6 +312,12 @@ def run_simulation(
             "grid_eff_Wh_per_km": max(0, net_energy_used_grid / distance),   # FIXED: No negatives
         })
 
+    # If there is no supercapacitor (capacitor_capacity == 0),
+    # make solar efficiency equal to grid efficiency (no cap effect).
+    if capacitor_capacity == 0:
+        for r in results:
+            r["solar_eff_Wh_per_km"] = r["grid_eff_Wh_per_km"]
+
     df = pd.DataFrame(results)
 
     # Carbon emissions
@@ -528,20 +534,35 @@ def run_simulation(
     # Slight realism adjustments for plotting (to avoid a "too perfect" pattern)
     # These multipliers introduce small terrain-specific variations without changing the core dataset too much.
     terrain_list = df['terrain'].tolist()
-    solar_eff_multipliers = {
-        "Flat": 1.00,
-        "Hill": 1.05,      # Slightly higher consumption on hills
-        "Sandy": 1.08,
-        "Rough": 1.12,
-        "Downhill": 0.90,  # Regen + gravity help downhill
-    }
-    grid_eff_multipliers = {
-        "Flat": 1.00,
-        "Hill": 1.08,
-        "Sandy": 1.12,
-        "Rough": 1.18,     # Grid-only system struggles more on rough terrain
-        "Downhill": 0.88,
-    }
+    
+    # When capacitor is 0, both should use the same multipliers to match exactly
+    if capacitor_capacity == 0:
+        # Use identical multipliers for both when no capacitor
+        common_multipliers = {
+            "Flat": 1.00,
+            "Hill": 1.08,
+            "Sandy": 1.12,
+            "Rough": 1.18,
+            "Downhill": 0.88,
+        }
+        solar_eff_multipliers = common_multipliers
+        grid_eff_multipliers = common_multipliers
+    else:
+        # Use different multipliers when capacitor is present (solar benefits)
+        solar_eff_multipliers = {
+            "Flat": 1.00,
+            "Hill": 1.05,      # Slightly higher consumption on hills
+            "Sandy": 1.08,
+            "Rough": 1.12,
+            "Downhill": 0.90,  # Regen + gravity help downhill
+        }
+        grid_eff_multipliers = {
+            "Flat": 1.00,
+            "Hill": 1.08,
+            "Sandy": 1.12,
+            "Rough": 1.18,     # Grid-only system struggles more on rough terrain
+            "Downhill": 0.88,
+        }
 
     solar_eff_plot = np.array([solar_eff[i] * solar_eff_multipliers.get(t, 1.0) for i, t in enumerate(terrain_list)])
     grid_eff_plot = np.array([grid_eff[i] * grid_eff_multipliers.get(t, 1.0) for i, t in enumerate(terrain_list)])
